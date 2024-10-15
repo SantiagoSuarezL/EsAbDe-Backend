@@ -13,7 +13,7 @@ class LoginView(APIView):
     operation_summary="Iniciar sesión",
     operation_description="Permite a un usuario iniciar sesión con sus credenciales.",
     request_body=LoginSerializer,
-    responses={200: 'Inicio de sesión exitoso.', 401: 'Credenciales incorrectas.'}
+    responses={200: 'Inicio de sesión exitoso.', 401: 'Credenciales incorrectas.', 403: 'Cuenta bloqueada.'}
   )
   def post(self, request, *args, **kwargs):
     serializer = LoginSerializer(data=request.data)
