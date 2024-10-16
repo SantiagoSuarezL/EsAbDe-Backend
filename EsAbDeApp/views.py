@@ -1,12 +1,13 @@
-from datetime import timedelta, timezone
+from django.contrib.auth import authenticate
+from django.utils import timezone as django_timezone
 from drf_yasg.utils import swagger_auto_schema
-from django.contrib.auth import login
-from EsAbDeApp.models import User
-from .serializers import LoginSerializer, RegisterSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.views.decorators.csrf import csrf_exempt
+from .serializers import LoginSerializer, RegisterSerializer
+from datetime import timedelta
+from EsAbDeApp.models import User
 
 class LoginView(APIView):
   @swagger_auto_schema(
@@ -16,28 +17,30 @@ class LoginView(APIView):
     request_body=LoginSerializer,
     responses={200: 'Inicio de sesión exitoso.', 401: 'Credenciales incorrectas.', 403: 'Cuenta bloqueada.'}
   )
-  def post(self, request, *args, **kwargs):
-    serializer = LoginSerializer(data=request.data)
-
-    if serializer.is_valid():
-      user = serializer.validated_data
-
-      if user.is_locked_out():
-        lockout_time_remaining = user.last_failed_attempt + timedelta(minutes=5) - timezone.now()
-        return Response({
-          'message': f'Cuenta bloqueada. Inténtalo de nuevo en {lockout_time_remaining.seconds // 60} minutos.'
-        }, status=status.HTTP_403_FORBIDDEN)
-
-      user.reset_failed_attempts()
-      login(request, user)
-      return Response({'message': 'Inicio de sesión exitoso.'}, status=status.HTTP_200_OK)
-    
+  def post(self, request, *args, **kwargs):    
     username = request.data.get('username')
+    password = request.data.get('password')
+
     user = User.objects.filter(username=username).first()
 
-    if user:
-      user.register_failed_attempt()
+    if user is not None and user.is_locked_out():
+      lockut_time_remaining = user.last_failed_attempt + timedelta(minutes=5) - django_timezone.now()
+      return Response({'message': f'Cuenta bloqueada. Intente de nuevo en {lockut_time_remaining.seconds//60} minutos.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    user = authenticate(username=username, password=password)
 
+    if user is not None:
+      user.reset_failed_attempts()
+      refresh = RefreshToken.for_user(user)
+      return Response({
+        'refresh': str(refresh),
+        'access': str(refresh.access_token)
+      }, status=status.HTTP_200_OK)
+
+    if user is None:
+      user = User.objects.filter(username=username).first()
+      if user:
+        user.register_failed_attempt()
     return Response({'message': 'Credenciales incorrectas.'}, status=status.HTTP_401_UNAUTHORIZED)
   
 class RegisterView(APIView):
@@ -56,3 +59,19 @@ class RegisterView(APIView):
       return Response({'message': 'Usuario registrado.'}, status=status.HTTP_201_CREATED)
 
     return Response({'message': 'Datos incorrectos.'}, status=status.HTTP_400_BAD_REQUEST)
+  
+class LogoutView(APIView):
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Cerrar sesión",
+    operation_description="Permite a un usuario cerrar sesión.",
+    responses={200: 'Sesión cerrada.'}
+  )
+  def post(self, request):
+    try:
+      refresh_token = request.data['refresh']
+      token = RefreshToken(refresh_token)
+      token.blacklist()
+      return Response({'message': 'Sesión cerrada.'}, status=status.HTTP_200_OK)
+    except:
+      return Response({'message': 'Token inválido.'}, status=status.HTTP_400_BAD_REQUEST)
