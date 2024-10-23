@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone as django_timezone
+from django.conf import settings
 
 class User(AbstractUser):
   failed_attempts = models.IntegerField(default=0)
@@ -33,3 +34,16 @@ class User(AbstractUser):
     self.failed_attempts += 1
     self.last_failed_attempt = django_timezone.now()
     self.save()
+
+class Personas(models.Model):
+  user = models.OneToOneField(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.CASCADE,
+    related_name='personas'
+  )
+  nombre = models.CharField(max_length=100)
+  email = models.EmailField()
+  area_encargada = models.CharField(max_length=100)
+
+  def __str__(self):
+      return self.nombre
