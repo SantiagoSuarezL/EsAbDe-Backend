@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
-from EsAbDeApp.models import User
+from EsAbDeApp.models import Personas, User
 
 class LoginSerializer(serializers.Serializer):
   username = serializers.CharField()
@@ -35,3 +35,12 @@ class RegisterSerializer(serializers.Serializer):
     user.set_password(validated_data['password'])
     user.save()
     return user
+  
+class PersonasSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Personas
+    fields = ['nombre', 'email', 'area_encargada']
+
+  def create(self, validated_data):
+    validated_data['user'] = self.context['request'].user
+    return Personas.objects.create(**validated_data)
