@@ -5,7 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import LoginSerializer, RegisterSerializer
+from rest_framework.permissions import IsAuthenticated
+from .serializers import LoginSerializer, PersonasSerializer, RegisterSerializer
 from datetime import timedelta
 from EsAbDeApp.models import User
 
@@ -75,3 +76,38 @@ class LogoutView(APIView):
       return Response({'message': 'Sesión cerrada.'}, status=status.HTTP_200_OK)
     except:
       return Response({'message': 'Token inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+class PerfilView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Obtener perfil",
+    operation_description="Permite obtener el perfil del usuario que inicia sesion.",
+    responses={200: PersonasSerializer}
+  )
+  def get(self, request):
+    if hasattr(request.user, 'personas'):
+      persona = request.user.personas
+      serializer = PersonasSerializer(persona)
+      return Response(serializer.data)
+    else:
+      return Response({"detail": "No hay información de personas asociada a este usuario."}, status=404)
+    
+class PersonasCreateView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Crear persona",
+    operation_description="Permite a un administrador crear una persona.",
+    request_body=PersonasSerializer,
+    responses={201: PersonasSerializer, 400: 'Datos incorrectos.'}
+  )
+
+  def post(self, request):
+    serializer = PersonasSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+      serializer.save()
+      return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
