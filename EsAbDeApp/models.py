@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.utils import timezone as django_timezone
 from django.conf import settings
 
@@ -47,3 +48,27 @@ class Personas(models.Model):
 
   def __str__(self):
       return self.nombre
+  
+class Areas (models.Model):
+  nameArea = models.CharField(max_length=100)
+  score = models.IntegerField(default=0)
+  description = models.TextField(blank=True, null=True)
+
+  def __str__(self):
+    return self.nameArea
+  
+class Pacientes (models.Model):
+  first_name = models.CharField(max_length=100)
+  second_name = models.CharField(max_length=100, blank=True, null=True)
+  last_name = models.CharField(max_length=100)
+  second_last_name = models.CharField(max_length=100, blank=True, null=True)
+  gender = models.CharField(max_length=10)
+  birthdate = models.DateField(null=True, blank=True)
+  created_by = models.ForeignKey(Personas, on_delete=models.CASCADE, related_name='pacientes')
+  created_at = models.DateTimeField(auto_now_add=True)
+  area = models.ManyToManyField(Areas, related_name='pacientes', blank=True)
+
+  def clean(self):
+    super().clean()
+    if self.birthdate > django_timezone.now().date():
+     raise ValidationError("La fecha de nacimiento no puede ser futura.")
