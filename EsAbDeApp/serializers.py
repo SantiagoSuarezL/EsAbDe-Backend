@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
-from EsAbDeApp.models import Personas, User
+from EsAbDeApp.models import Personas, User, Pacientes, Areas
+from datetime import date
 
 class LoginSerializer(serializers.Serializer):
   username = serializers.CharField()
@@ -44,3 +45,29 @@ class PersonasSerializer(serializers.ModelSerializer):
   def create(self, validated_data):
     validated_data['user'] = self.context['request'].user
     return Personas.objects.create(**validated_data)
+  
+class PacienteSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Pacientes
+    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate', 'area']
+
+  def validate_birthdate(self, value):
+    if value > date.today():
+      raise serializers.ValidationError("La fecha de nacimiento no puede ser mayor a la fecha actual.")
+    return value
+  
+class AreasSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Areas
+    fields = ['nameArea', 'score', 'description']
+    extra_kwargs = {
+      'score': {'read_only': True},
+      'description': {'required': False},
+    }
+
+  def create(self, validated_data):
+    if 'description' not in validated_data or not validated_data['description']:
+      validated_data['description'] = "No hay una descripción disponible"
+
+    validated_data['score'] = 0
+    return super().create(validated_data)

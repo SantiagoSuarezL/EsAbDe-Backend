@@ -6,9 +6,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import LoginSerializer, PersonasSerializer, RegisterSerializer
+from .serializers import AreasSerializer, LoginSerializer, PacienteSerializer, PersonasSerializer, RegisterSerializer
 from datetime import timedelta
 from EsAbDeApp.models import User
+from .models import Areas, Pacientes
 
 class LoginView(APIView):
   @swagger_auto_schema(
@@ -107,6 +108,79 @@ class PersonasCreateView(APIView):
 
   def post(self, request):
     serializer = PersonasSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+      serializer.save()
+      return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+  
+class PacientesCreateView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Crear paciente",
+    operation_description="Permite a un administrador crear un paciente.",
+    request_body=PacienteSerializer,
+    responses={201: PacienteSerializer, 400: 'Datos incorrectos.'}
+  )
+
+  def post(self, request):
+    serializer = PacienteSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+
+      paciente = serializer.save(created_by=request.user.personas)
+
+      areas = Areas.objects.all()
+      paciente.area.set(areas)
+
+      return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+  
+class PacientesListView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Listar pacientes",
+    operation_description="Permite a un administrador listar los pacientes.",
+    responses={200: PacienteSerializer}
+  )
+
+  def get(self, request):
+    pacientes = Pacientes.objects.filter(created_by=request.user.personas).prefetch_related('area')
+
+    patient_data = []
+    for paciente in pacientes:
+      areas_data = []
+      for area in paciente.area.all():
+        areas_data.append({
+          'nameArea': area.nameArea,
+          'score': area.score,
+          'description': area.description if area.description else 'No hay observaciones disponibles.'
+        })
+      patient_data.append({
+        'id': paciente.id,
+        'first_name': paciente.first_name,
+        'second_name': paciente.second_name,
+        'last_name': paciente.last_name,
+        'second_last_name': paciente.second_last_name,
+        'gender': paciente.gender,
+        'birthdate': paciente.birthdate,
+        'areas': areas_data
+      })
+    return Response(patient_data, status=status.HTTP_200_OK)
+  
+class AreasCreateView(APIView):
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Crear área",
+    operation_description="Permite a un administrador crear un área.",
+    responses={201: AreasSerializer, 400: 'Datos incorrectos.'}
+  )
+
+  def post(self, request):
+    serializer = AreasSerializer(data=request.data)
     if serializer.is_valid():
       serializer.save()
       return Response(serializer.data, status=status.HTTP_201_CREATED)
