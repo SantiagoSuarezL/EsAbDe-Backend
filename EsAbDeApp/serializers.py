@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
-from EsAbDeApp.models import Personas, User, Pacientes, Areas
+from EsAbDeApp.models import Personas, Evaluacion, User, Pacientes, Areas
 from datetime import date
 
 class LoginSerializer(serializers.Serializer):
@@ -51,6 +51,14 @@ class PacienteSerializer(serializers.ModelSerializer):
     model = Pacientes
     fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate', 'area']
 
+  def create(self, validated_data):
+    if validated_data['gender'] == "Male":
+      validated_data['gender'] = "Masculino"
+    elif validated_data['gender'] == "Female":
+      validated_data['gender'] = "Femenino"
+
+    return super().create(validated_data)
+
   def validate_birthdate(self, value):
     if value > date.today():
       raise serializers.ValidationError("La fecha de nacimiento no puede ser mayor a la fecha actual.")
@@ -71,3 +79,12 @@ class AreasSerializer(serializers.ModelSerializer):
 
     validated_data['score'] = 0
     return super().create(validated_data)
+  
+class EvaluacionSerializer(serializers.ModelSerializer):
+  patient = serializers.PrimaryKeyRelatedField(queryset=Pacientes.objects.all())
+  area = serializers.PrimaryKeyRelatedField(queryset=Areas.objects.all())
+  birthdate = serializers.DateField(required=True)
+
+  class Meta:
+    model = Evaluacion
+    fields = ['patient', 'area', 'birthdate']
