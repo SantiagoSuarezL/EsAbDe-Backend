@@ -72,3 +72,33 @@ class Pacientes (models.Model):
     super().clean()
     if self.birthdate > django_timezone.now().date():
      raise ValidationError("La fecha de nacimiento no puede ser futura.")
+    
+class AgeRange (models.Model):
+  min_days = models.PositiveIntegerField()
+  max_days = models.PositiveIntegerField()
+
+  def __str__(self):
+    return f'{self.min_days} - {self.max_days}'
+    
+class Pregunta (models.Model):
+  question = models.CharField(max_length=255)
+  age_range = models.ForeignKey(AgeRange, on_delete=models.CASCADE, related_name='preguntas')
+  area = models.ForeignKey(Areas, on_delete=models.CASCADE, related_name='preguntas')
+
+  def __str__(self):
+    return self.question
+
+class Respuesta (models.Model):
+  patient = models.ForeignKey(Pacientes, on_delete=models.CASCADE)
+  area = models.ForeignKey(Areas, on_delete=models.CASCADE)
+  score = models.IntegerField()
+  description = models.TextField(blank=True, null=True)
+  created_at = models.DateTimeField(auto_now_add=True)
+
+  def __str__(self):
+    return f'Evaluacion de {self.patient} en {self.area}'
+
+class Evaluacion (models.Model):
+  patient = models.ForeignKey(Pacientes, on_delete=models.CASCADE)
+  area = models.ForeignKey(Areas, on_delete=models.CASCADE)
+  birthdate = models.DateField()

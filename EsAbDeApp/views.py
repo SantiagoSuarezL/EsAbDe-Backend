@@ -6,10 +6,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import AreasSerializer, LoginSerializer, PacienteSerializer, PersonasSerializer, RegisterSerializer
+from .serializers import AreasSerializer, EvaluacionSerializer, LoginSerializer, PacienteSerializer, PersonasSerializer, RegisterSerializer
 from datetime import timedelta
 from EsAbDeApp.models import User
-from .models import Areas, Pacientes
+from .models import AgeRange, Areas, Pacientes, Pregunta
+from datetime import datetime
+import logging
+
+logging.basicConfig(
+  filename='logs.log',
+  level=logging.INFO,
+  format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 class LoginView(APIView):
   @swagger_auto_schema(
@@ -125,6 +133,7 @@ class PacientesCreateView(APIView):
   )
 
   def post(self, request):
+    logging.info(f"request_post: {request.data}")
     serializer = PacienteSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
 
@@ -185,3 +194,95 @@ class AreasCreateView(APIView):
       serializer.save()
       return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def calculate_age(birthdate):
+    now = datetime.now().date()
+    years = now.year - birthdate.year
+    months = now.month - birthdate.month
+    days = now.day - birthdate.day
+
+    if months < 0:
+        years -= 1
+        months += 12
+
+    if days < 0:
+        months -= 1
+        last_month = (now.month - 1) if now.month > 1 else 12
+        days += (datetime(now.year, last_month, 1) - datetime(now.year, last_month - 1, 1)).days
+
+    return {"years": years, "months": months, "days": days}
+
+  
+class AreasListView(APIView):
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Listar áreas",
+    operation_description="Permite a un administrador listar las áreas.",
+    responses={200: AreasSerializer}
+  )
+
+  def get(self, request):
+    areas = Areas.objects.values('id','nameArea')
+    return Response(areas, status=status.HTTP_200_OK)
+  
+  
+class PatientAreaDetailView(APIView):
+  def get(self, request, paciente_id, area_id):
+    try:
+      paciente = Pacientes.objects.get(id=paciente_id)
+      area = Areas.objects.get(id=area_id, pacientes=paciente)
+
+      paciente_data = PacienteSerializer(paciente).data
+      area_data = AreasSerializer(area).data
+
+      edad_data = calculate_age(paciente.birthdate)
+
+      return Response ({
+        'paciente': paciente_data,
+        'area': area_data,
+        'edad': edad_data
+      }, status=status.HTTP_200_OK)
+    except Pacientes.DoesNotExist:
+      return Response({'message': 'Paciente no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    except Areas.DoesNotExist:
+      return Response({'message': 'Área no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+    
+class PatientIdDetailView(APIView):
+  def get(self, request, paciente_id):
+    try:
+      paciente = Pacientes.objects.get(id=paciente_id)
+
+      paciente_data = PacienteSerializer(paciente).data
+
+      edad_data = calculate_age(paciente.birthdate)
+
+      return Response ({
+        'paciente': paciente_data,
+        'edad': edad_data
+      }, status=status.HTTP_200_OK)
+    except Pacientes.DoesNotExist:
+      return Response({'message': 'Paciente no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    
+class EvaluationPatient(APIView):
+    def post(self, request):
+        logging.info(f"request: {request.data}")  # Muestra la solicitud entrante
+        serializer = EvaluacionSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            logging.info("Datos validados:", serializer.validated_data)
+            birthdate = serializer.validated_data['birthdate']
+            age_in_days = (datetime.now().date() - birthdate).days
+            
+            age_range = AgeRange.objects.filter(min_days__lte=age_in_days, max_days__gte=age_in_days).first()
+            if not age_range:
+                return Response({"error": "No se encontró un rango de edad adecuado"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            area = serializer.validated_data['area']
+            preguntas = Pregunta.objects.filter(age_range=age_range, area=area)
+            preguntas_data = [{"question": pregunta.question} for pregunta in preguntas]
+                
+            return Response({"preguntas": preguntas_data}, status=status.HTTP_200_OK)
+        else: 
+          logging.error("Errores de validación:", serializer.errors)
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
