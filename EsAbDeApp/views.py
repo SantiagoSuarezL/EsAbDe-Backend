@@ -144,6 +144,47 @@ class PacientesCreateView(APIView):
 
       return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PatientUpdateView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Actualizar paciente",
+    operation_description="Permite a un administrador actualizar un paciente.",
+    request_body=PacienteSerializer,
+    responses={200: PacienteSerializer, 400: 'Datos incorrectos.'}
+  )
+
+  def put(self, request, paciente_id):
+    try:
+      paciente = Pacientes.objects.get(id=paciente_id)
+    except Pacientes.DoesNotExist:
+      return Response({'message': 'Paciente no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = PacienteSerializer(paciente, data=request.data, context={'request': request})
+    if serializer.is_valid():
+      serializer.save()
+      return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PatientDeleteView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @swagger_auto_schema(
+    tags= ['API de EsAbDe'],
+    operation_summary="Eliminar paciente",
+    operation_description="Permite a un administrador eliminar un paciente.",
+    responses={204: 'Paciente eliminado.', 404: 'Paciente no encontrado.'}
+  )
+
+  def delete(self, request, paciente_id):
+    try:
+      paciente = Pacientes.objects.get(id=paciente_id)
+      paciente.delete()
+      return Response({'message': 'Paciente eliminado.'}, status=status.HTTP_204_NO_CONTENT)
+    except Pacientes.DoesNotExist:
+      return Response({'message': 'Paciente no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
   
 class PacientesListView(APIView):
   permission_classes = [IsAuthenticated]
