@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
-from EsAbDeApp.models import Personas, Evaluacion, User, Pacientes, Areas
+from EsAbDeApp.models import Personas, Evaluacion, Respuesta, User, Pacientes, Areas
 from datetime import date
 
 class LoginSerializer(serializers.Serializer):
@@ -46,10 +46,35 @@ class PersonasSerializer(serializers.ModelSerializer):
     validated_data['user'] = self.context['request'].user
     return Personas.objects.create(**validated_data)
   
+class RespuestaSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Respuesta
+    fields = ['score', 'description']
+  
+class AreasSerializer(serializers.ModelSerializer):
+  respuestas = RespuestaSerializer(many=True)
+
+  class Meta:
+    model = Areas
+    fields = ['nameArea', 'score', 'description', 'respuestas']
+    extra_kwargs = {
+      'score': {'read_only': True},
+      'description': {'required': False},
+    }
+
+  def create(self, validated_data):
+    if 'description' not in validated_data or not validated_data['description']:
+      validated_data['description'] = "No hay una descripción disponible"
+
+    validated_data['score'] = 0
+    return super().create(validated_data)
+  
 class PacienteSerializer(serializers.ModelSerializer):
+  areas = AreasSerializer(source='area', many=True)
+
   class Meta:
     model = Pacientes
-    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate', 'area']
+    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate', 'areas']
 
   def create(self, validated_data):
     if validated_data['gender'] == "Male":
@@ -63,22 +88,6 @@ class PacienteSerializer(serializers.ModelSerializer):
     if value > date.today():
       raise serializers.ValidationError("La fecha de nacimiento no puede ser mayor a la fecha actual.")
     return value
-  
-class AreasSerializer(serializers.ModelSerializer):
-  class Meta:
-    model = Areas
-    fields = ['nameArea', 'score', 'description']
-    extra_kwargs = {
-      'score': {'read_only': True},
-      'description': {'required': False},
-    }
-
-  def create(self, validated_data):
-    if 'description' not in validated_data or not validated_data['description']:
-      validated_data['description'] = "No hay una descripción disponible"
-
-    validated_data['score'] = 0
-    return super().create(validated_data)
   
 class EvaluacionSerializer(serializers.ModelSerializer):
   patient = serializers.PrimaryKeyRelatedField(queryset=Pacientes.objects.all())

@@ -90,7 +90,7 @@ class Pregunta (models.Model):
 
 class Respuesta (models.Model):
   patient = models.ForeignKey(Pacientes, on_delete=models.CASCADE)
-  area = models.ForeignKey(Areas, on_delete=models.CASCADE)
+  area = models.ForeignKey(Areas, related_name='respuestas', on_delete=models.CASCADE)
   score = models.IntegerField()
   description = models.TextField(blank=True, null=True)
   created_at = models.DateTimeField(auto_now_add=True)
