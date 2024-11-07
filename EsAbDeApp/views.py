@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone as django_timezone
 from drf_yasg.utils import swagger_auto_schema
@@ -9,9 +10,63 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import AreasSerializer, EvaluacionSerializer, LoginSerializer, PacienteSerializer, PersonasSerializer, RegisterSerializer
 from datetime import timedelta
 from EsAbDeApp.models import User
-from .models import AgeRange, Areas, Pacientes, Pregunta
+from .models import AgeRange, Areas, Pacientes, Pregunta, Respuesta
 from datetime import datetime
 import logging
+import os
+import google.generativeai as genai
+from django.http import JsonResponse
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+class GenerativeAIView(APIView):
+  def post(self, request):
+    logging.info(f"Datos recibidos: {request.data}")
+
+    puntaje = request.data.get('puntaje')
+    patient_id = request.data.get('patient_id')
+    area_id = request.data.get('area_id')
+
+    if not all([puntaje, patient_id, area_id]):
+      logging.error("Falta en los datos",request.data)
+      return JsonResponse({"error": "Faltan datos en la solicitud"}, status=400)
+    
+    try:
+      logging.info(f"patient_id: {patient_id}")
+      patient = Pacientes.objects.get(id=patient_id)
+      area = Areas.objects.get(id=area_id)
+    except Pacientes.DoesNotExist or Areas.DoesNotExist:
+      return JsonResponse({"error": "Paciente o área no encontrados"}, status=404)
+    
+    prompt =(
+              "Eres un medico pediatra que da observaciones a los pacientes."
+              f"Genera una observación para un paciente con puntaje de {puntaje} en el área de {area.nameArea}, sin ningún texto adicional antes."
+            )
+
+    generation_config = {
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "top_k": 40,
+      "max_output_tokens": 200,
+      "response_mime_type": "text/plain",
+    }
+
+    model = genai.GenerativeModel(
+      model_name="gemini-1.5-flash",
+      generation_config=generation_config,
+    )
+    chat_session = model.start_chat(history=[])
+    response = chat_session.send_message(prompt)
+
+    respuesta = Respuesta(
+      patient=patient,
+      area=area,
+      score=puntaje,
+      description=response.text
+    )
+    respuesta.save()
+
+    return JsonResponse({"observacion": response.text, "respuesta_id": respuesta.id})
 
 logging.basicConfig(
   filename='logs.log',
@@ -203,11 +258,17 @@ class PacientesListView(APIView):
     for paciente in pacientes:
       areas_data = []
       for area in paciente.area.all():
+        respuestas = Respuesta.objects.filter(patient=paciente, area=area)
+        respuestas_data = [{
+          'score': respuesta.score,
+          'description': respuesta.description if respuesta.description else 'No hay observaciones disponibles.'
+        } for respuesta in respuestas]
+        
         areas_data.append({
           'nameArea': area.nameArea,
-          'score': area.score,
-          'description': area.description if area.description else 'No hay observaciones disponibles.'
+          'respuestas': respuestas_data
         })
+
       patient_data.append({
         'id': paciente.id,
         'first_name': paciente.first_name,
