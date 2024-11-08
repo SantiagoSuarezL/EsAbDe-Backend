@@ -27,7 +27,7 @@ class GenerativeAIView(APIView):
     patient_id = request.data.get('patient_id')
     area_id = request.data.get('area_id')
 
-    if not all([puntaje, patient_id, area_id]):
+    if puntaje is None or patient_id is None or area_id is None:
       logging.error("Falta en los datos",request.data)
       return JsonResponse({"error": "Faltan datos en la solicitud"}, status=400)
     
@@ -39,8 +39,13 @@ class GenerativeAIView(APIView):
       return JsonResponse({"error": "Paciente o área no encontrados"}, status=404)
     
     prompt =(
-              "Eres un medico pediatra que da observaciones a los pacientes."
-              f"Genera una observación para un paciente con puntaje de {puntaje} en el área de {area.nameArea}, sin ningún texto adicional antes."
+              "Eres un médico pediatra experto en desarrollo infantil."
+              "Genera una observacion de acuerdo con los siguientes niveles de puntaje en el area de"
+              f"{area.nameArea}"
+              "- Si el puntaje es 99: el desarrollo del niño o niña es el esperado para su edad.\n"
+              "- Si el puntaje es 66: el niño o niña está en riesgo de problemas de desarrollo.\n"
+              "- Si el puntaje es 33 o 0: el niño o la niña podría experimentar un retraso en el desarrollo.\n\n"
+              f"El puntaje del paciente es {puntaje}. Proporciona una observación clara y breve sobre el estado de desarrollo del paciente sin ningun texto adicional."
             )
 
     generation_config = {
