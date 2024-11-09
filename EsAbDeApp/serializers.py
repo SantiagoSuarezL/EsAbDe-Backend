@@ -70,11 +70,11 @@ class AreasSerializer(serializers.ModelSerializer):
     return super().create(validated_data)
   
 class PacienteSerializer(serializers.ModelSerializer):
-  areas = AreasSerializer(source='area', many=True)
+  # areas = AreasSerializer(source='area', many=True)
 
   class Meta:
     model = Pacientes
-    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate', 'areas']
+    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate']
 
   def create(self, validated_data):
     if validated_data['gender'] == "Male":
