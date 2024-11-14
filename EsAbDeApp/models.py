@@ -58,6 +58,7 @@ class Areas (models.Model):
     return self.nameArea
   
 class Pacientes (models.Model):
+  id = models.CharField(max_length=100, primary_key=True)
   first_name = models.CharField(max_length=100)
   second_name = models.CharField(max_length=100, blank=True, null=True)
   last_name = models.CharField(max_length=100)

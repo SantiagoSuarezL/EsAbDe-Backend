@@ -74,9 +74,13 @@ class PacienteSerializer(serializers.ModelSerializer):
 
   class Meta:
     model = Pacientes
-    fields = ['first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate']
+    fields = ['id', 'first_name', 'second_name', 'last_name', 'second_last_name', 'gender', 'birthdate']
 
   def create(self, validated_data):
+    paciente_id = validated_data.get('id')
+    if Pacientes.objects.filter(id=paciente_id).exists():
+      raise serializers.ValidationError("El paciente ya existe.")
+
     if validated_data['gender'] == "Male":
       validated_data['gender'] = "Masculino"
     elif validated_data['gender'] == "Female":
