@@ -257,7 +257,9 @@ class PacientesListView(APIView):
   )
 
   def get(self, request):
-    pacientes = Pacientes.objects.filter(created_by=request.user.personas).prefetch_related('area')
+    pacientes = Pacientes.objects.filter(
+      created_by=request.user.personas
+    ).prefetch_related('area').order_by('-created_at')
 
     patient_data = []
     for paciente in pacientes:
