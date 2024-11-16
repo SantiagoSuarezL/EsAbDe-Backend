@@ -42,9 +42,9 @@ class GenerativeAIView(APIView):
               "Eres un médico pediatra experto en desarrollo infantil."
               "Genera una observacion de acuerdo con los siguientes niveles de puntaje en el area de"
               f"{area.nameArea}"
-              "- Si el puntaje es 99: el desarrollo del niño o niña es el esperado para su edad.\n"
-              "- Si el puntaje es 66: el niño o niña está en riesgo de problemas de desarrollo.\n"
-              "- Si el puntaje es 33 o 0: el niño o la niña podría experimentar un retraso en el desarrollo.\n\n"
+              "Si el puntaje es 99: el desarrollo del niño o niña es el esperado para su edad.\n"
+              "Si el puntaje es 66: el niño o niña está en riesgo de problemas de desarrollo.\n"
+              "Si el puntaje es 33 o 0: el niño o la niña podría experimentar un retraso en el desarrollo.\n\n"
               f"El puntaje del paciente es {puntaje}. Proporciona una observación clara y breve sobre el estado de desarrollo del paciente sin ningun texto adicional."
             )
 
@@ -217,6 +217,7 @@ class PatientUpdateView(APIView):
   )
 
   def put(self, request, paciente_id):
+    logging.info(f"request_put: {request.data}")
     try:
       paciente = Pacientes.objects.get(id=paciente_id)
     except Pacientes.DoesNotExist:
@@ -226,6 +227,7 @@ class PatientUpdateView(APIView):
     if serializer.is_valid():
       serializer.save()
       return Response(serializer.data, status=status.HTTP_200_OK)
+    logging.error(f"Errores del serializer: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PatientDeleteView(APIView):

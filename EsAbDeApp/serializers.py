@@ -70,6 +70,7 @@ class AreasSerializer(serializers.ModelSerializer):
     return super().create(validated_data)
   
 class PacienteSerializer(serializers.ModelSerializer):
+  id = serializers.IntegerField(required=False)
   # areas = AreasSerializer(source='area', many=True)
 
   class Meta:
