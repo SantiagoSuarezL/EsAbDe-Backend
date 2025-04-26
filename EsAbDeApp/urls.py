@@ -17,5 +17,6 @@ urlpatterns = [
   path('get/paciente/<int:paciente_id>/', views.PatientIdDetailView.as_view(), name='pacientes_detail'),
   path('evaluar/', views.EvaluationPatient.as_view(), name='evaluar'),
   path('generate/', views.GenerativeAIView.as_view(), name='generate'),
+  path('upload/', views.UploadFileView.as_view(), name='upload'),
 ]
 

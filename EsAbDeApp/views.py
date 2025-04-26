@@ -16,6 +16,35 @@ import logging
 import os
 import google.generativeai as genai
 from django.http import JsonResponse
+import boto3
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UploadFileView(APIView):
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'No se ha proporcionado ningún archivo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+
+        try:
+            s3.upload_fileobj(
+                file,
+                settings.AWS_STORAGE_BUCKET_NAME,
+                file.name,
+            )
+            url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{file.name}"
+            return Response({'url': url}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
