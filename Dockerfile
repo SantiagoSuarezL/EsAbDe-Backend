@@ -3,6 +3,9 @@ FROM python:3.12.5
 
 ENV PYTHONUNBUFFERED=1
 
+# Instalar dependencias del sistema, incluido el cliente de PostgreSQL
+RUN apt-get update && apt-get install -y postgresql-client
+
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /EsAbDe-backend
 
