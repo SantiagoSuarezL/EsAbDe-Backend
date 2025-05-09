@@ -40,10 +40,11 @@ class RegisterSerializer(serializers.Serializer):
 class PersonasSerializer(serializers.ModelSerializer):
   class Meta:
     model = Personas
-    fields = ['nombre', 'email', 'area_encargada']
+    fields = ['nombre', 'area_encargada']
 
   def create(self, validated_data):
     validated_data['user'] = self.context['request'].user
+    validated_data['email'] = self.context['request'].user.email
     return Personas.objects.create(**validated_data)
   
 class RespuestaSerializer(serializers.ModelSerializer):
@@ -52,7 +53,7 @@ class RespuestaSerializer(serializers.ModelSerializer):
     fields = ['score', 'description']
   
 class AreasSerializer(serializers.ModelSerializer):
-  respuestas = RespuestaSerializer(many=True)
+  respuestas = RespuestaSerializer(many=True, read_only=True)
 
   class Meta:
     model = Areas
