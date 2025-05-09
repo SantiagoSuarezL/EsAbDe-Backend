@@ -46,7 +46,7 @@ class UploadFileView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class GenerativeAIView(APIView):
   def post(self, request):
@@ -69,12 +69,13 @@ class GenerativeAIView(APIView):
     
     prompt =(
               "Eres un médico pediatra experto en desarrollo infantil."
-              "Genera una observacion de acuerdo con los siguientes niveles de puntaje en el area de"
-              f"{area.nameArea}"
-              "Si el puntaje es 99: el desarrollo del niño o niña es el esperado para su edad.\n"
-              "Si el puntaje es 66: el niño o niña está en riesgo de problemas de desarrollo.\n"
-              "Si el puntaje es 33 o 0: el niño o la niña podría experimentar un retraso en el desarrollo.\n\n"
-              f"El puntaje del paciente es {puntaje}. Proporciona una observación clara y breve sobre el estado de desarrollo del paciente sin ningun texto adicional."
+              f"Genera una observación breve y clara sobre el estado de desarrollo del paciente en el área de {area.nameArea}, "
+              f"basándote en su puntaje de evaluación: {puntaje}.\n\n"
+              "Usa la siguiente guía para interpretar el puntaje:\n"
+              "- 99: Desarrollo adecuado para su edad.\n"
+              "- 66: Riesgo de problemas de desarrollo.\n"
+              "- 33 o 0: Posible retraso en el desarrollo.\n\n"
+              "Incluye solo recomendaciones y observaciones relevantes para el área de {area.nameArea}.\n\n"
             )
 
     generation_config = {
